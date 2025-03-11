@@ -1,39 +1,38 @@
-SELECT 
-TO_CHAR(pu.PEUN_FECHAINICIO, 'YYYY') ||
-CASE 
-WHEN TO_CHAR(pu.PEUN_FECHAINICIO, 'MM') BETWEEN '01' AND '06' THEN '-I' 
-ELSE '-II' 
-END AS Periodo_Ingreso,
-TO_CHAR(pu.PEUN_FECHAFIN, 'YYYY') ||
-CASE 
-WHEN TO_CHAR(pu.PEUN_FECHAFIN, 'MM') BETWEEN '01' AND '06' THEN '-I'
-ELSE '-II'
-END AS Periodo_Final,
---pu.PEUN_ANO AS Periodo_Grado,
---pu.PEUN_PERIODO AS Periodo,
-se.SITE_DESCRIPCION AS Situacion,
---cte.CATE_DESCRIPCION AS Categoria,
-ROUND(MONTHS_BETWEEN(pu.PEUN_FECHAFIN, pu.PEUN_FECHAINICIO) / 1) AS Duracion_Prevista, 
-COUNT(DISTINCT ep.PEGE_ID) AS Total_Estudiantes,
-COUNT(DISTINCT CASE WHEN cte.CATE_DESCRIPCION IN ('NUEVO', 'TRANSFERENCIA INTERNA', 'TRANSFERENCIA EXTERNA', 'MOVILIDAD ACADEMICA') THEN ep.PEGE_ID END) 
-AS Total_Estudiantes_Ingresados
-FROM academico.categoria cte
-INNER JOIN academico.estudiantepensum ep ON ep.CATE_ID = cte.CATE_ID
-INNER JOIN academico.periodouniversidad pu ON pu.PEUN_ID = ep.PEUN_ID
-INNER JOIN general.personageneral pg ON pg.PEGE_ID = ep.PEGE_ID
-INNER JOIN academico.unidadprograma up ON up.unpr_id = ep.unpr_id
-INNER JOIN academico.programa pr ON pr.prog_id = up.prog_id
-INNER JOIN academico.situacionestudiante se ON se.SITE_ID = ep.SITE_ID
-WHERE 
-se.SITE_DESCRIPCION IN ('INACTIVO', 'EXCLUIDO', 'RETIRO VOLUNTARIO DEL PROGRAMA', 'GRADUADO', 'ACTIVO')
-AND pu.PEUN_ANO >= 2019 
-AND pr.tppa_id IN (1,2)
-GROUP BY 
-pu.PEUN_FECHAINICIO,
-pu.PEUN_FECHAFIN,
---pu.PEUN_ANO,
---pu.PEUN_PERIODO,
-se.SITE_DESCRIPCION
---cte.CATE_DESCRIPCION
-ORDER BY Periodo_Ingreso;
+SELECT submaac.*, subreac.materias_matriculadas
+FROM (
+SELECT peun.tppa_id tipo_periodo, peun.peun_ano año, peun.peun_periodo periodo,
+decode(tidg.tidg_abreviatura, 'RC', 'CC', 'PAS', 'PS', 'VA', 'PS', tidg.tidg_abreviatura) id_tipo_documento, 
+pege_documentoidentidad documento_identidad, prog_codigoicfes pro_consecutivo,
+(CASE WHEN fran_id IN (44) THEN 25473
+WHEN fran_id IN (41, 42, 43, 64, 65, 66, 84, 85, 104, 124) THEN 11001
+ELSE 00000 END) id_municipio,
+to_char(peng_fechanacimiento, 'DD/MM/YYYY') AS fecha_nacimiento,
+id_pais id_pais_nacimiento, cige_idlugarnacimiento id_municipio_nacimiento, '1' id_zona_residencia,
+nvl2((SELECT a.estp_id FROM academico.estudiantepensum a WHERE a.estp_id = estp.estp_id AND a.cate_id = 4), 'S', 'N') es_reintegro,
+prog.prog_nombre, peng.peng_primernombre, peng.peng_segundonombre, peng.peng_primerapellido, peng.peng_segundoapellido,
+(SELECT cate_descripcion FROM academico.categoria cate2 WHERE cate2.cate_id = maac.cate_id) AS maac_desc_categoria,
+(SELECT site_descripcion FROM academico.situacionestudiante site2 WHERE site2.site_id = maac.site_id) AS maac_desc_situacion,
+cate.cate_descripcion AS estp_desc_categoria,
+(SELECT site_descripcion FROM academico.situacionestudiante site3 WHERE site3.site_id = estp.site_id) AS estp_desc_situacion,
+maac.maac_id, estp.estp_id, pege.pege_id, fran.fran_descripcion
+FROM general.personageneral pege
+INNER JOIN general.personanaturalgeneral peng ON pege.pege_id = peng.pege_id
+INNER JOIN academico.estudiantepensum estp ON estp.pege_id = pege.pege_id
+INNER JOIN academico.his_matriculaacademica maac ON maac.estp_id = estp.estp_id
+INNER JOIN academico.periodouniversidad peun ON peun.peun_id = maac.peun_id
+INNER JOIN academico.tipodocumentogeneral tidg ON tidg.tidg_id = pege.tidg_id  
+INNER JOIN academico.pensum pens ON pens.pens_id = estp.pens_id
+INNER JOIN academico.programa prog ON prog.prog_id = pens.prog_id 
+INNER JOIN general.paisgeneral page ON page.page_id = peng.page_idnacimiento
+INNER JOIN academico.categoria cate ON cate.cate_id = estp.cate_id
+INNER JOIN academico.tipoperiodoacademico tppa ON tppa.tppa_id = peun.tppa_id
+INNER JOIN academico.franja fran ON fran.fran_id = estp.fran_id
+WHERE estp.site_id NOT IN (10) AND maac_tipo <> 'CANCELADA'
+) submaac
+LEFT JOIN (
+SELECT maac_id, COUNT(mate_codigomateria) materias_matriculadas
+FROM academico.registroacademico reac
+GROUP BY maac_id
+) subreac ON submaac.maac_id = subreac.maac_id
+WHERE subreac.materias_matriculadas > 0 AND submaac.tipo_periodo IN (1, 2);
 
