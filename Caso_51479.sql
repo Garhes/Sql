@@ -1,15 +1,15 @@
 /*solicito su colaboración enviando el reporte de las notas de cada cursos con la relación de los estudiantes de la Escuela de Ingenierías 
 Ingeneria de sistemas y Ingeneria de logistica de los periodos académicos 2020-I, 2020-II y 2021-I.*/
 SELECT 
-hc.HICA_VALOR,
-pr.PROG_NOMBRE,
-pu.PEUN_PERIODO,
-pu.PEUN_ANO,
-ep.ESTP_ID,
-mt.MATE_CODIGOMATERIA, 
-mt.MATE_NOMBRE,
-gr.GRUP_NOMBRE,
-hn.NOTA_DESCRIPCION
+hc.HICA_VALOR Notas,
+pr.PROG_NOMBRE Nombre_Programa,
+pu.PEUN_PERIODO Periodo,
+pu.PEUN_ANO Año,
+ep.ESTP_ID Id_Estudiante,
+mt.MATE_CODIGOMATERIA Codigo_Materia, 
+mt.MATE_NOMBRE Nombre_Materia,
+gr.GRUP_NOMBRE Grupo,
+hn.NOTA_DESCRIPCION Examenes
 FROM academico.his_calificacion hc
 INNER JOIN academico.registroacademico ra ON ra.reac_id = hc.reac_id
 INNER JOIN academico.periodouniversidad pu ON pu.peun_id = ra.peun_id
